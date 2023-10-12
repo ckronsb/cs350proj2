@@ -179,6 +179,7 @@ growproc(int n)
 // Create a new process copying p as the parent.
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
+extern int child_first;
 int
 fork(void)
 {
@@ -217,6 +218,10 @@ fork(void)
   acquire(&ptable.lock);
   np->state = RUNNABLE;
   release(&ptable.lock);
+
+  if(child_first == 1) {
+    yield();
+  }
 
   return pid;
 }

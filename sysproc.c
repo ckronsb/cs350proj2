@@ -112,3 +112,12 @@ int sys_enable_sched_trace(void)
 
   return 0;
 }
+
+int child_first;
+int sys_fork_winner(void)
+{
+  if(argint(0, &child_first) < 0) {
+    return -1;
+  }
+  return 0;
+}
