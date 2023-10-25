@@ -114,10 +114,10 @@ int sys_enable_sched_trace(void)
 }
 
 int child_first;
-int sys_fork_winner(void)
+int sys_fork_winner(int winner)
 {
-  if(argint(0, &child_first) < 0) {
-    return -1;
-  }
+  argstr(0, &winner);
+  child_first = winner;
+  
   return 0;
 }
