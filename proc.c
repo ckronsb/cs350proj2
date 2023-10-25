@@ -221,7 +221,7 @@ fork(void)
   np->state = RUNNABLE;
   release(&ptable.lock);
 
-
+//added
   if(child_first == 1) {
     yield();
   }
@@ -327,6 +327,9 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+extern int schedul;
+
 void
 scheduler(void)
 {
@@ -336,6 +339,9 @@ scheduler(void)
   
   int ran = 0; // CS 350/550: to solve the 100%-CPU-utilization-when-idling problem
 
+  if (schedul == 1){ //stride scheduler used
+
+  }
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -368,7 +374,42 @@ scheduler(void)
     if (ran == 0){
         halt();
     }
+
+
   }
+}
+
+int 
+tickets_owned(int pid){
+struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if(p->pid == pid){
+           return p->tickets;
+        }
+  }
+
+  return 0;
+}
+
+int transfer_tickets(int pid, int tickets){
+  struct proc *p;
+
+  int ticketCount = tickets_owned(myproc());
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+        if (p->pid == pid){
+          //suv\btract and add
+//           On success, the return value of this function should be the number of tickets that
+// the calling process has after the transfer.
+// – If the number of tickets requested to transfer is smaller than 0, return -1.
+// – If the number of tickets requested to transfer is larger than ticket p − 1, return -2.
+// – If the recipient process does not exist, return -3.
+        }
+
+  }
+  
+
 }
 
 // Enter scheduler.  Must hold only ptable.lock

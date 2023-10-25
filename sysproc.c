@@ -116,8 +116,36 @@ int sys_enable_sched_trace(void)
 int child_first;
 int sys_fork_winner(int winner)
 {
-  argstr(0, &winner);
+  argint(0, &winner);
   child_first = winner;
   
   return 0;
+}
+
+int schedul;
+int sys_set_sched(int scheduler){
+  argint(0, &scheduler);
+  schedul = scheduler;
+
+  return -1;
+}
+
+int pids;
+int sys_tickets_owned(int pid) {
+  argint(0, &pid);
+  pids = pid;
+
+  //return the number of tickets per pid
+
+  return -1;
+}
+
+int pid_s, ticket;
+int sys_transfer_tickets(int pid, int tickets){
+    argint(0, &pid);
+    pid_s = pid;
+    argint(0, &tickets);
+    ticket = tickets;
+
+  return -1;
 }
