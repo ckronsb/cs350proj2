@@ -14,6 +14,8 @@ struct {
 
 static struct proc *initproc;
 
+int TOTAL_TICKETS = 100;
+
 int nextpid = 1;
 int sched_trace_enabled = 0; // ZYF: for OS CPU/process project
 int sched_trace_counter = 0; // ZYF: counter for print formatting
@@ -75,7 +77,7 @@ myproc(void) {
 static struct proc*
 allocproc(void)
 {
-  struct proc *p;
+  struct proc *p, *backup;
   char *sp;
 
   acquire(&ptable.lock);
@@ -90,6 +92,24 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+
+  backup = p;
+
+  int num_processes=1;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if (p->state == RUNNING || p->state == RUNNABLE || p->state == SLEEPING){
+      num_processes++;
+      p->pass = 0;
+    }
+  
+  int tickets = TOTAL_TICKETS/num_processes;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+   if (p->state == RUNNING || p->state == RUNNABLE || p->state == SLEEPING)
+      p->tickets = tickets;
+  
+  p = backup;
+  p->tickets = tickets;
+  p->pass = 0;
 
   release(&ptable.lock);
 
@@ -271,6 +291,22 @@ exit(void)
 
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
+
+  int num_processes=0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if (p->state == RUNNABLE || p->state == RUNNING || p->state == SLEEPING)
+      num_processes++;
+  
+  int tickets = TOTAL_TICKETS/num_processes;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if (p->state == RUNNABLE || p->state == RUNNING || p->state == SLEEPING){
+      p->tickets = tickets;
+      p->pass = 0;
+    }
+
+  
+
   sched();
   panic("zombie exit");
 }
@@ -329,19 +365,15 @@ wait(void)
 //      via swtch back to the scheduler.
 
 extern int schedul;
-
 void
 scheduler(void)
 {
-  struct proc *p;
+  struct proc *p, *lowest_pass;
   struct cpu *c = mycpu();
   c->proc = 0;
   
   int ran = 0; // CS 350/550: to solve the 100%-CPU-utilization-when-idling problem
 
-  if (schedul == 1){ //stride scheduler used
-
-  }
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -352,6 +384,20 @@ scheduler(void)
         for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
           if(p->state != RUNNABLE)
             continue;
+          
+          if (schedul == 1){ //stride scheduler used
+
+            lowest_pass = p;
+
+            for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+              if (p->state == RUNNABLE && p->pass < lowest_pass->pass)
+                lowest_pass = p;
+            
+            p = lowest_pass;
+            
+            int stride = (TOTAL_TICKETS * 10)/(p->tickets);
+            p->pass += stride;
+          }
 
           ran = 1;
       
@@ -382,36 +428,41 @@ scheduler(void)
 int 
 tickets_owned(int pid){
 struct proc *p;
-
+  acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if(p->pid == pid){
-           return p->tickets;
+          int temp =p->tickets;
+           release(&ptable.lock);
+           return temp;
         }
   }
-
   return 0;
 }
 
 int transfer_tickets(int pid, int tickets){
   struct proc *p;
 
-  int ticketCount = tickets_owned(myproc());
-
+  if (tickets < 0){
+     // – If the number of tickets requested to transfer is smaller than 0, return -1.
+     return -1;
+  } else if (tickets > (myproc()->tickets-1)){
+     // – If the number of tickets requested to transfer is larger than ticket p − 1, return -2.
+     return -2;
+  }
+  acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
         if (p->pid == pid){
-          //suv\btract and add
-//           On success, the return value of this function should be the number of tickets that
-// the calling process has after the transfer.
-// – If the number of tickets requested to transfer is smaller than 0, return -1.
-// – If the number of tickets requested to transfer is larger than ticket p − 1, return -2.
-// – If the recipient process does not exist, return -3.
-        }
-
+          p->tickets += tickets;
+          myproc()->tickets -= tickets;
+          release(&ptable.lock);
+          return myproc()->tickets;
+        //On success, the return value of this function should be the number of tickets that the calling process has after the transfer.
+      }
   }
-  
 
+  release(&ptable.lock);
+  return -3;
 }
-
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this

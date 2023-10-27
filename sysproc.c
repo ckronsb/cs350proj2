@@ -134,18 +134,15 @@ int pids;
 int sys_tickets_owned(int pid) {
   argint(0, &pid);
   pids = pid;
-
   //return the number of tickets per pid
 
-  return -1;
+  return tickets_owned(pids);
 }
 
-int pid_s, ticket;
-int sys_transfer_tickets(int pid, int tickets){
+int sys_transfer_tickets(void){
+    int pid, tickets;
     argint(0, &pid);
-    pid_s = pid;
-    argint(0, &tickets);
-    ticket = tickets;
+    argint(1, &tickets);
 
-  return -1;
+  return transfer_tickets(pid, tickets);
 }
